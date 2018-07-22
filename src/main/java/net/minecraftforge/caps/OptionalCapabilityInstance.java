@@ -3,10 +3,15 @@ package net.minecraftforge.caps;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class OptionalCapabilityInstance<T> {
     private final Supplier<T> supplier;
+    private AtomicReference<T> resolved;
 
     private static final OptionalCapabilityInstance<Void> EMPTY = new OptionalCapabilityInstance<>(null);
 
@@ -26,30 +31,19 @@ public class OptionalCapabilityInstance<T> {
 
     private T getValue()
     {
-        if (supplier != null)
+        if (resolved != null) {
+            return resolved.get();
+        }
+        if (supplier != null) {
+            resolved = new AtomicReference<>(null);
             try {
-                return supplier.get();
+                resolved.set(supplier.get());
+                return resolved.get();
             } catch (Throwable e) {
-                e.printStackTrace();
                 return null;
             }
-        return null;
-    }
-
-    /**
-     * If a capability supports this aspect, returns the capability's value,
-     * otherwise throws {@code NoSuchElementException}.
-     *
-     * @return the capability object held by this {@code OptionalCapabilityInstance}
-     * @throws NoSuchElementException if there is no capability present
-     *
-     * @see Optional#isPresent()
-     */
-    public T get() {
-        if (getValue() == null) {
-            throw new NoSuchElementException("No value present");
         }
-        return getValue();
+        return null;
     }
 
     /**
@@ -87,10 +81,7 @@ public class OptionalCapabilityInstance<T> {
      */
     public OptionalCapabilityInstance<T> filter(Predicate<? super T> predicate) {
         Objects.requireNonNull(predicate);
-        if (!isPresent())
-            return this;
-        else
-            return OptionalCapabilityInstance.of(()->predicate.test(getValue()) ? getValue() : null);
+        return OptionalCapabilityInstance.of(()->predicate.test(getValue()) ? getValue() : null);
     }
 
     /**
@@ -132,11 +123,7 @@ public class OptionalCapabilityInstance<T> {
      */
     public<U> OptionalCapabilityInstance<U> flatMap(Function<? super T, Optional<U>> mapper) {
         Objects.requireNonNull(mapper);
-        if (!isPresent())
-            return OptionalCapabilityInstance.empty();
-        else {
-            return OptionalCapabilityInstance.of(()-> mapper.apply(getValue()).orElse(null));
-        }
+        return OptionalCapabilityInstance.of(()-> isPresent() ? mapper.apply(getValue()).orElse(null) : null);
     }
 
     /**

@@ -4,7 +4,7 @@ import java.util.function.Supplier;
 
 public class BadCap {
     static {
-        if (1==0) {
+        if (1==1) {
             throw new RuntimeException("BARF!");
         }
     }
