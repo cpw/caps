@@ -13,8 +13,16 @@ public interface ICapabilityProvider {
         return OptionalCapabilityInstance.of(instanceProvider(cap, aspect));
     }
 
+    default <T, U extends IAspect<?>> OptionalCapabilityInstance<T> getCapability(final CapabilityRef<T> capRef, final U aspect) {
+        return capRef.isPresent() ? getCapability(capRef.getCap(), aspect) : OptionalCapabilityInstance.empty();
+    }
+
     default <T> OptionalCapabilityInstance<T> getCapability(final Capability<T> cap) {
-        return OptionalCapabilityInstance.of(instanceProvider(cap, IAspect.None.NONE));
+        return getCapability(cap, IAspect.None.NONE);
+    }
+
+    default <T> OptionalCapabilityInstance<T> getCapability(final CapabilityRef<T> capRef) {
+        return capRef.isPresent() ? getCapability(capRef.getCap()) : OptionalCapabilityInstance.empty();
     }
 
     <T, U extends IAspect<?>> Supplier<T> instanceProvider(final Capability<T> cap, final U aspect);

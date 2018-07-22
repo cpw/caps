@@ -16,7 +16,7 @@ public class OptionalCapabilityInstance<T> {
     private static final OptionalCapabilityInstance<Void> EMPTY = new OptionalCapabilityInstance<>(null);
 
     @SuppressWarnings("unchecked")
-    private static <T> OptionalCapabilityInstance<T> empty() {
+    static <T> OptionalCapabilityInstance<T> empty() {
         return (OptionalCapabilityInstance<T>)EMPTY;
     }
 
@@ -52,7 +52,7 @@ public class OptionalCapabilityInstance<T> {
      * @return {@code true} if there is a mod object present, otherwise {@code false}
      */
     public boolean isPresent() {
-        return getValue() != null;
+        return supplier != null;
     }
 
     /**
