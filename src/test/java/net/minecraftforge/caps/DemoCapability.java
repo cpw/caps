@@ -14,9 +14,13 @@ public class DemoCapability {
 
     public static class PowerCap {
         private final PowerData handler;
-
+        enum PowerType {STORE, FISH}
         public PowerCap(Supplier<?> powerHolder) {
             this.handler = (PowerData) powerHolder.get();
+        }
+
+        public PowerType getType() {
+            return PowerType.STORE;
         }
 
         public int getStored() {

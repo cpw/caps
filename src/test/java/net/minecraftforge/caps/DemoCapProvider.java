@@ -9,6 +9,8 @@ public class DemoCapProvider implements ICapabilityProvider {
             return ()-> cap.newInstance(() -> new DemoCapability.PowerCap.PowerData((DemoCapability.FacingAspect)aspect, 10000));
         } else if (cap == DemoCapability.NOASPECTCAP) {
             return () -> cap.newInstance(MyFishHandler::new);
+        } else if (cap == BadCapHolder.BADCAP) {
+            return () -> cap.newInstance(()->null);
         }
         return null;
     }

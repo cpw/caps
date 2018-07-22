@@ -5,32 +5,34 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.*;
 
-public class OptionalCapabilityInstance<T, U extends IAspect<?>> {
+public class OptionalCapabilityInstance<T> {
     private final Supplier<T> supplier;
-    private final Capability<T> capability;
-    private final U aspect;
 
-    private static final OptionalCapabilityInstance<Void, IAspect.None> EMPTY = new OptionalCapabilityInstance<>(null, IAspect.None.NONE, null);
+    private static final OptionalCapabilityInstance<Void> EMPTY = new OptionalCapabilityInstance<>(null);
 
     @SuppressWarnings("unchecked")
-    private static <T, U extends IAspect<?>> OptionalCapabilityInstance<T, U> empty() {
-        return (OptionalCapabilityInstance<T, U>)EMPTY;
+    private static <T> OptionalCapabilityInstance<T> empty() {
+        return (OptionalCapabilityInstance<T>)EMPTY;
     }
 
-    private OptionalCapabilityInstance(Capability<T> capability, U aspect, Supplier<T> instanceSupplier)
+    private OptionalCapabilityInstance(Supplier<T> instanceSupplier)
     {
-        this.capability = capability;
-        this.aspect = aspect;
         this.supplier = instanceSupplier;
     }
 
-    public static <T, U extends IAspect<?>> OptionalCapabilityInstance<T, U> of(final Capability<T> cap, final U aspect, final Supplier<T> instanceSupplier) {
-        return new OptionalCapabilityInstance<>(cap, aspect, instanceSupplier);
+    public static <T> OptionalCapabilityInstance<T> of(final Supplier<T> instanceSupplier) {
+        return new OptionalCapabilityInstance<>(instanceSupplier);
     }
 
     private T getValue()
     {
-        if (supplier != null) return supplier.get();
+        if (supplier != null)
+            try {
+                return supplier.get();
+            } catch (Throwable e) {
+                e.printStackTrace();
+                return null;
+            }
         return null;
     }
 
@@ -83,12 +85,12 @@ public class OptionalCapabilityInstance<T, U extends IAspect<?>> {
      * otherwise an empty {@code OptionalMod}
      * @throws NullPointerException if the predicate is null
      */
-    public OptionalCapabilityInstance<T, U> filter(Predicate<? super T> predicate) {
+    public OptionalCapabilityInstance<T> filter(Predicate<? super T> predicate) {
         Objects.requireNonNull(predicate);
         if (!isPresent())
             return this;
         else
-            return predicate.test(getValue()) ? this : empty();
+            return OptionalCapabilityInstance.of(()->predicate.test(getValue()) ? getValue() : null);
     }
 
     /**
@@ -106,13 +108,9 @@ public class OptionalCapabilityInstance<T, U extends IAspect<?>> {
      * otherwise an empty {@code Optional}
      * @throws NullPointerException if the mapping function is null
      */
-    public<U> Optional<U> map(Function<? super T, ? extends U> mapper) {
+    public<U> OptionalCapabilityInstance<U> map(Function<? super T, ? extends U> mapper) {
         Objects.requireNonNull(mapper);
-        if (!isPresent())
-            return Optional.empty();
-        else {
-            return Optional.ofNullable(mapper.apply(getValue()));
-        }
+        return OptionalCapabilityInstance.of(()->isPresent() ? mapper.apply(getValue()) : null);
     }
 
     /**
@@ -132,12 +130,12 @@ public class OptionalCapabilityInstance<T, U extends IAspect<?>> {
      * @throws NullPointerException if the mapping function is null or returns
      * a null result
      */
-    public<U> Optional<U> flatMap(Function<? super T, Optional<U>> mapper) {
+    public<U> OptionalCapabilityInstance<U> flatMap(Function<? super T, Optional<U>> mapper) {
         Objects.requireNonNull(mapper);
         if (!isPresent())
-            return Optional.empty();
+            return OptionalCapabilityInstance.empty();
         else {
-            return Objects.requireNonNull(mapper.apply(getValue()));
+            return OptionalCapabilityInstance.of(()-> mapper.apply(getValue()).orElse(null));
         }
     }
 
@@ -188,22 +186,5 @@ public class OptionalCapabilityInstance<T, U extends IAspect<?>> {
         } else {
             throw exceptionSupplier.get();
         }
-    }
-
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (this == obj) return true;
-        if (obj instanceof OptionalCapabilityInstance) {
-            final OptionalCapabilityInstance obj1 = (OptionalCapabilityInstance) obj;
-            return Objects.equals(obj1.capability, capability) && Objects.equals(obj1.aspect, aspect);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash(capability, aspect);
     }
 }

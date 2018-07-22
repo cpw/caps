@@ -9,12 +9,12 @@ public interface ICapabilityProvider {
         return Collections.emptySet();
     }
 
-    default <T, U extends IAspect<?>> OptionalCapabilityInstance<T, U> getCapability(final Capability<T> cap, final U aspect) {
-        return OptionalCapabilityInstance.of(cap, aspect, instanceProvider(cap, aspect));
+    default <T, U extends IAspect<?>> OptionalCapabilityInstance<T> getCapability(final Capability<T> cap, final U aspect) {
+        return OptionalCapabilityInstance.of(instanceProvider(cap, aspect));
     }
 
-    default <T> OptionalCapabilityInstance<T, IAspect.None> getCapability(final Capability<T> cap) {
-        return OptionalCapabilityInstance.of(cap, IAspect.None.NONE, instanceProvider(cap, IAspect.None.NONE));
+    default <T> OptionalCapabilityInstance<T> getCapability(final Capability<T> cap) {
+        return OptionalCapabilityInstance.of(instanceProvider(cap, IAspect.None.NONE));
     }
 
     <T, U extends IAspect<?>> Supplier<T> instanceProvider(final Capability<T> cap, final U aspect);

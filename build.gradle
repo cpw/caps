@@ -67,7 +67,9 @@ jmh {
     warmupIterations = 2
     timeOnIteration = '30s'
     warmup = '5s'
-    profilers = ['stack','gc']
+    jvmArgs = ['-XX:+UseG1GC']
+    profilers = ['hs_comp', 'gc']
+    includeTests = true
 }
 
 dependencies {
@@ -83,6 +85,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.2.+")
     compileOnly("org.openjdk.jmh:jmh-core:1.21")
     compileOnly("org.openjdk.jmh:jmh-generator-annprocess:1.21")
+    jmhCompile configurations.compile
+    testCompile configurations.compile
 }
 
 artifacts {
