@@ -1,0 +1,145 @@
+plugins {
+    id 'org.ajoberstar.reckon' version '0.8.0'
+    id 'org.ajoberstar.grgit' version '2.2.1'
+    id "me.champeau.gradle.jmh" version "0.4.7"
+}
+
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+apply plugin: 'jacoco'
+apply plugin: 'java-library'
+
+group 'net.minecraftforge'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "forge"
+        url = "http://files.minecraftforge.net/maven"
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.1"
+}
+
+reckon {
+    scopeFromProp()
+    stageFromProp('milestone', 'rc', 'final')
+}
+
+reckonTagCreate.dependsOn check
+
+test {
+    useJUnitPlatform()
+}
+
+ext.sharedManifest = manifest {
+    attributes(["Specification-Title": "caps",
+                "Specification-Vendor": "Forge",
+                "Specification-Version": "1", // Currently version 1 of the cpas specification
+                "Implementation-Title": project.name,
+                "Implementation-Version": "${version}+${System.getenv("BUILD_NUMBER")?:0}+${grgit.head().getAbbreviatedId(8)}",
+                "Implementation-Vendor" :"Forge",
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                "Git-Commit": grgit.head().abbreviatedId,
+                "Git-Branch": grgit.branch.current().getName() ],
+            "net/minecraftforge/caps/")
+}
+
+jar {
+    manifest = project.manifest {
+        from sharedManifest
+    }
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+jmh {
+    iterations = 5
+    fork = 1
+    warmupIterations = 2
+    timeOnIteration = '30s'
+    warmup = '5s'
+    profilers = ['stack','gc']
+}
+
+dependencies {
+    implementation("com.google.code.findbugs:jsr305:3.0.2")
+    implementation("org.ow2.asm:asm:6.2")
+    implementation("org.ow2.asm:asm-commons:6.2")
+    implementation("org.ow2.asm:asm-tree:6.2")
+    implementation("org.apache.logging.log4j:log4j-api:2.11.+")
+    testRuntime("org.apache.logging.log4j:log4j-core:2.11.+")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.2.+")
+    testImplementation("org.powermock:powermock-core:1.7.4")
+    testImplementation("org.hamcrest:hamcrest-core:1.3")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.2.+")
+    compileOnly("org.openjdk.jmh:jmh-core:1.21")
+    compileOnly("org.openjdk.jmh:jmh-generator-annprocess:1.21")
+}
+
+artifacts {
+    archives jar
+    archives sourcesJar
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            pom {
+                name = 'Forge Caps'
+                description = 'Capabilities for Forge'
+                url = 'https://github.com/cpw/caps'
+                scm {
+                    url = 'https://github.com/cpw/caps'
+                    connection = 'scm:git:git://github.com/cpw/caps.git'
+                    developerConnection = 'scm:git:git@github.com:cpw/caps.git'
+                }
+                issueManagement {
+                    system = 'github'
+                    url = 'https://github.com/cpw/caps/issues'
+                }
+
+                licenses {
+                    license {
+                        name = 'LGPLv2.1'
+                        url = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'cpw'
+                        name = 'cpw'
+                    }
+                    developer {
+                        id = 'LexManos'
+                        name = 'LexManos'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            credentials {
+                username project.properties.forgeMavenUser?:'fake'
+                password project.properties.forgeMavenPassword?:'news'
+            }
+            url "http://files.minecraftforge.net/maven/manage/upload"
+        }
+        maven {
+            name = "localdir"
+            url project.file("repo")
+        }
+    }
+}
