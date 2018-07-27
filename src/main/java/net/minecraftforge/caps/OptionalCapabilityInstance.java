@@ -1,8 +1,9 @@
 package net.minecraftforge.caps;
 
-import java.util.NoSuchElementException;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -10,34 +11,48 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class OptionalCapabilityInstance<T> {
-    private final Supplier<T> supplier;
+    private final NonNullSupplier<T> supplier;
     private AtomicReference<T> resolved;
+    private Set<Consumer<OptionalCapabilityInstance<T>>> listeners = new HashSet<>();
+    private boolean isValid = true;
 
     private static final OptionalCapabilityInstance<Void> EMPTY = new OptionalCapabilityInstance<>(null);
 
     @SuppressWarnings("unchecked")
-    static <T> OptionalCapabilityInstance<T> empty() {
+    public static <T> OptionalCapabilityInstance<T> empty() {
         return (OptionalCapabilityInstance<T>)EMPTY;
     }
 
-    private OptionalCapabilityInstance(Supplier<T> instanceSupplier)
+    @SuppressWarnings("unchecked")
+    public <T> OptionalCapabilityInstance<T> cast() {
+        return (OptionalCapabilityInstance<T>)this;
+    }
+
+    private OptionalCapabilityInstance(NonNullSupplier<T> instanceSupplier)
     {
         this.supplier = instanceSupplier;
     }
 
-    public static <T> OptionalCapabilityInstance<T> of(final Supplier<T> instanceSupplier) {
+    public static <T> OptionalCapabilityInstance<T> of(final NonNullSupplier<T> instanceSupplier) {
         return new OptionalCapabilityInstance<>(instanceSupplier);
     }
 
     private T getValue()
     {
+        if (!isValid) {
+            return null;
+        }
         if (resolved != null) {
             return resolved.get();
         }
         if (supplier != null) {
             resolved = new AtomicReference<>(null);
             try {
-                resolved.set(supplier.get());
+                T temp = supplier.get();
+                if (temp == null) {
+                    throw new IllegalStateException("Supplier must not return null value");
+                }
+                resolved.set(temp);
                 return resolved.get();
             } catch (Throwable e) {
                 return null;
@@ -52,7 +67,7 @@ public class OptionalCapabilityInstance<T> {
      * @return {@code true} if there is a mod object present, otherwise {@code false}
      */
     public boolean isPresent() {
-        return supplier != null;
+        return supplier != null && isValid; //Just checking isPresent isnt enough to be sure getValue != null. UNLESS I change it to NonNullSupplier and make it part of the contract, but then the commented functions below are bad.
     }
 
     /**
@@ -64,7 +79,7 @@ public class OptionalCapabilityInstance<T> {
      * null
      */
     public void ifPresent(Consumer<? super T> consumer) {
-        if (getValue() != null)
+        if (isValid && getValue() != null)
             consumer.accept(getValue());
     }
 
@@ -79,7 +94,7 @@ public class OptionalCapabilityInstance<T> {
      * otherwise an empty {@code OptionalMod}
      * @throws NullPointerException if the predicate is null
      */
-    public OptionalCapabilityInstance<T> filter(Predicate<? super T> predicate) {
+    public OptionalCapabilityInstance<T> filter(Predicate<? super T> predicate) { //I am not sure this is valid, or how to handle this, it's just a copy pasta from Optional. I dont think its needed. Returning a null supplier is bad
         Objects.requireNonNull(predicate);
         return OptionalCapabilityInstance.of(()->predicate.test(getValue()) ? getValue() : null);
     }
@@ -99,7 +114,7 @@ public class OptionalCapabilityInstance<T> {
      * otherwise an empty {@code Optional}
      * @throws NullPointerException if the mapping function is null
      */
-    public<U> OptionalCapabilityInstance<U> map(Function<? super T, ? extends U> mapper) {
+    public<U> OptionalCapabilityInstance<U> map(Function<? super T, ? extends U> mapper) {//I am not sure this is valid, or how to handle this, it's just a copy pasta from Optional. I dont think its needed. Returning a null supplier is bad
         Objects.requireNonNull(mapper);
         return OptionalCapabilityInstance.of(()->isPresent() ? mapper.apply(getValue()) : null);
     }
@@ -121,7 +136,7 @@ public class OptionalCapabilityInstance<T> {
      * @throws NullPointerException if the mapping function is null or returns
      * a null result
      */
-    public<U> OptionalCapabilityInstance<U> flatMap(Function<? super T, Optional<U>> mapper) {
+    public<U> OptionalCapabilityInstance<U> flatMap(Function<? super T, Optional<U>> mapper) {//I am not sure this is valid, or how to handle this, it's just a copy pasta from Optional. I dont think its needed. Returning a null supplier is bad
         Objects.requireNonNull(mapper);
         return OptionalCapabilityInstance.of(()-> isPresent() ? mapper.apply(getValue()).orElse(null) : null);
     }
@@ -173,5 +188,18 @@ public class OptionalCapabilityInstance<T> {
         } else {
             throw exceptionSupplier.get();
         }
+    }
+
+    public void addListener(Consumer<OptionalCapabilityInstance<T>> listener) {
+        if (!isValid)
+            listener.accept(this); // They are stupid so just directly call them.
+        else
+            this.listeners.add(listener);
+    }
+    public void invalidate() { //Should only be called by the 'Owner' of this capability, this is to notify any listerners that this has become invalid and they should update.
+        //For example, a TE would call this, if they are covered with a microblock panel, thus cutting off pipe connectivity to this side. Also should be called for all caps when a TE is invalidated, or a world/chunk unloads, or a entity dies, etc...
+        //This allows modders to keep a cache of Capabilities instead of re-checking them every tick.
+        this.isValid = false;
+        this.listeners.forEach(e -> e.accept(this));
     }
 }

@@ -2,6 +2,8 @@ package net.minecraftforge.caps;
 
 import java.util.function.Supplier;
 
+import net.minecraftforge.common.capabilities.Capability;
+
 public class DemoCapability {
     public enum FacingAspect implements IAspect<FacingAspect> {
         UP, DOWN, EAST, WEST, NORTH, SOUTH;

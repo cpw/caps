@@ -73,6 +73,7 @@ jmh {
 }
 
 dependencies {
+    compile("com.google.code.gson:gson:2.8.5")
     implementation("com.google.code.findbugs:jsr305:3.0.2")
     implementation("org.ow2.asm:asm:6.2")
     implementation("org.ow2.asm:asm-commons:6.2")

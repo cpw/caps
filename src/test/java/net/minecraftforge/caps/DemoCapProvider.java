@@ -2,6 +2,8 @@ package net.minecraftforge.caps;
 
 import java.util.function.Supplier;
 
+import net.minecraftforge.common.capabilities.Capability;
+
 public class DemoCapProvider implements ICapabilityProvider {
     @Override
     public <T, U extends IAspect<?>> Supplier<T> instanceProvider(final Capability<T> cap, final U aspect) {
